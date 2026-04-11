@@ -1,0 +1,157 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String     @id @default(cuid())
+  clerkId          String     @unique
+  email            String     @unique
+  protocols        Protocol[]
+  createdAt        DateTime   @default(now())
+}
+
+model Protocol {
+  id                 String    @id @default(cuid())
+  userId             String
+  user               User      @relation(fields: [userId], references: [id])
+  name               String
+  website            String?
+  twitterHandle      String?
+  chains             String[]  // ["ethereum","base","arbitrum"]
+  subscriptionTier   String    // "starter" | "growth" | "enterprise"
+  stripeCustomerId   String?
+  stripeSubscriptionId String?
+  monitoringActive   Boolean   @default(false)
+  tvlUsd             Float     @default(0)
+  teamEmails         String[]  // all team members for alerts
+  telegramChatId     String?
+  slackWebhookUrl    String?   // encrypted at rest
+  pagerdutyKey       String?   // encrypted at rest
+  onboardingStep     Int       @default(1) // 1–4
+  createdAt          DateTime  @default(now())
+  contracts          Contract[]
+  incidents          Incident[]
+  monthlyReports     MonthlyReport[]
+}
+
+model Contract {
+  id                   String    @id @default(cuid())
+  protocolId           String
+  protocol             Protocol  @relation(fields: [protocolId], references: [id])
+  address              String
+  chain                String
+  name                 String
+  abi                  Json
+  deployedAt           DateTime?
+  guardianProxyAddress String?
+  baselineEstablished  Boolean   @default(false)
+  baselineEstablishedAt DateTime?
+  paused               Boolean   @default(false)
+  pausedAt             DateTime?
+  pausedReason         String?
+  encryptedEmergencyKey String?  // AES-256-GCM encrypted private key
+  emergencyKeyIv        String?
+  emergencyKeyTag       String?
+  createdAt            DateTime  @default(now())
+  transactions         Transaction[]
+  baselineMetrics      BaselineMetric[]
+  incidents            Incident[]
+
+  @@unique([address, chain])
+}
+
+model Transaction {
+  id             String   @id @default(cuid())
+  contractId     String
+  contract       Contract @relation(fields: [contractId], references: [id])
+  txHash         String
+  blockNumber    BigInt
+  from           String
+  to             String
+  value          String   // Wei as string — never Float for crypto values
+  functionSig    String?
+  functionName   String?
+  callData       String?
+  gasUsed        BigInt?
+  gasPrice       String?
+  timestamp      DateTime
+  flagged        Boolean  @default(false)
+  exploitScore   Float    @default(0)
+  exploitType    String?  // "reentrancy"|"flash_loan"|"oracle"|"access_control"|"logic"|"value_extraction"
+  scoreBreakdown Json?    // Detailed breakdown of the score
+}
+
+model Incident {
+  id              String   @id @default(cuid())
+  protocolId      String
+  protocol        Protocol @relation(fields: [protocolId], references: [id])
+  contractId      String
+  contract        Contract @relation(fields: [contractId], references: [id])
+  type            String   // "exploit" | "anomaly" | "pause"
+  severity        String   // "low" | "medium" | "high" | "critical"
+  status          String   // "active" | "contained" | "resolved"
+  description     String
+  txHash          String?
+  forensicReport  String?  @db.Text
+  mitigationAction String?
+  responseTimeMs  Int?
+  pausedAt        DateTime?
+  resolvedAt      DateTime?
+  createdAt       DateTime @default(now())
+}
+
+model BaselineMetric {
+  id          String   @id @default(cuid())
+  contractId  String
+  contract    Contract @relation(fields: [contractId], references: [id])
+  metricName  String   // "gas_usage" | "call_frequency" | "value_transfer" | "param_range"
+  minValue    Float?
+  maxValue    Float?
+  avgValue    Float?
+  stdDev      Float?
+  p95         Float?
+  mean        Float?
+  createdAt   DateTime @default(now())
+
+  @@unique([contractId, metricName])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  action      String   // "contract_paused" | "pause_failed" | "user_login"
+  actorType   String   // "system" | "user"
+  actorId     String
+  entityType  String   // "incident" | "contract" | "protocol"
+  entityId    String
+  details     Json?
+  createdAt   DateTime @default(now())
+}
+
+model ThresholdOverride {
+  id             String   @id @default(cuid())
+  protocolId     String
+  exploitType    String
+  threshold      Float    // adjusted from default
+  adjustedAt     DateTime @default(now())
+  adjustedReason String   // "false_positive_rate_exceeded" | "manual"
+  @@unique([protocolId, exploitType])
+}
+
+model MonthlyReport {
+  id          String   @id @default(cuid())
+  protocolId  String
+  protocol    Protocol @relation(fields: [protocolId], references: [id])
+  month       Int
+  year        Int
+  summary     String   @db.Text
+  incidentCount Int
+  pdfUrl      String?
+  createdAt   DateTime @default(now())
+
+  @@unique([protocolId, month, year])
+}
