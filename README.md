@@ -1,6 +1,6 @@
-# 🛡️ VIBRANIUM — Autonomous Smart Contract Guardian
+# 🛡️ VIBRANIUM • Smart Contract Guardian
 
-VIBRANIUM is a production-ready, fully autonomous security system for DeFi protocols. It monitors live transactions, detects exploit patterns in real-time, and automatically pauses vulnerable contracts before funds are drained.
+VIBRANIUM is a security system for DeFi protocols. It monitors live transactions, detects exploit patterns in real-time, and automatically pauses vulnerable contracts before funds are drained.
 
 ## 🚀 Key Features
 
