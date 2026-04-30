@@ -62,7 +62,7 @@ export class BlockchainService {
     }
   }
 
-  async pauseContract(contractAddress: string, abi: any, privateKey: string, reason: string) {
+  async pauseContract(contractAddress: string, abi: unknown, privateKey: string, _reason: string) {
     const wallet = new ethers.Wallet(privateKey, this.provider);
     const contract = new ethers.Contract(contractAddress, abi, wallet);
     
@@ -99,7 +99,7 @@ export class BlockchainService {
         try {
           const tx = await this.getTransaction(txHash);
           if (tx) callback(tx);
-        } catch (error) {
+        } catch {
           // Silent fail for failed tx fetches
         }
       });

@@ -1,12 +1,25 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { UserButton, useAuth } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
+
+interface Incident {
+  id: string;
+  type: string;
+  status: string;
+  severity: string;
+  responseTimeMs: number;
+  createdAt: string;
+  txHash: string;
+  protocol: {
+    name: string;
+  };
+}
 
 export default function IncidentsPage() {
   const { userId } = useAuth();
-  const [incidents, setIncidents] = useState<any[]>([]);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

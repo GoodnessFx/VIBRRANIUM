@@ -1,12 +1,12 @@
-import { auth } from "@clerk/nextjs";
+import { validateIncidentOwnership } from "@/lib/auth-utils";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const { userId } = auth();
-  if (!userId) return new NextResponse("Unauthorized", { status: 401 });
+  const { user, error } = await validateIncidentOwnership(params.id);
+  if (error) return error;
 
-  const incident = await prisma.incident.update({
+  const updatedIncident = await prisma.incident.update({
     where: { id: params.id },
     data: { 
       status: "resolved",
@@ -18,11 +18,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     data: {
       action: "incident_resolved",
       actorType: "user",
-      actorId: userId,
+      actorId: user!.id,
       entityType: "incident",
       entityId: params.id,
     },
   });
 
-  return NextResponse.json(incident);
+  return NextResponse.json(updatedIncident);
 }

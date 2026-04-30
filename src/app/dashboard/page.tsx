@@ -1,12 +1,30 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { UserButton, useAuth } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
+
+interface DashboardData {
+  protocol: {
+    contracts: Array<{
+      id: string;
+      name: string;
+      address: string;
+    }>;
+  };
+  stats: {
+    totalTvl: number;
+    activeMonitors: number;
+    totalIncidents: number;
+    lastIncident: {
+      status: string;
+    } | null;
+  };
+}
 
 export default function EnhancedDashboard() {
   const { userId } = useAuth();
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -102,13 +120,13 @@ export default function EnhancedDashboard() {
           <div className="space-y-6">
             <h3 className="text-xl font-black tracking-tight uppercase">Active Contracts</h3>
             <div className="space-y-4">
-              {data?.protocol?.contracts.map((c: any) => (
+              {data?.protocol?.contracts.map((c) => (
                 <div key={c.id} className="p-4 rounded-xl border border-zinc-900 bg-black flex items-center justify-between hover:border-zinc-700 transition-colors">
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                     <div>
-                      <p className="font-bold text-sm">{c.name}</p>
-                      <p className="text-[10px] text-zinc-500 font-mono">{c.address.slice(0, 6)}...{c.address.slice(-4)}</p>
+                      <p className="font-bold text-sm" data-security-critical="true">{c.name}</p>
+                      <p className="text-[10px] text-zinc-500 font-mono" data-security-critical="true">{c.address.slice(0, 6)}...{c.address.slice(-4)}</p>
                     </div>
                   </div>
                   <span className="text-[10px] font-black bg-zinc-900 px-2 py-1 rounded text-zinc-400">ETH</span>
@@ -141,7 +159,7 @@ function TxRow({ hash, contract, score, time }: { hash: string, contract: string
   return (
     <tr className="text-xs group hover:bg-zinc-900/30 transition-colors">
       <td className="px-6 py-4 font-mono text-zinc-500 group-hover:text-zinc-300">{hash}</td>
-      <td className="px-6 py-4 font-bold">{contract}</td>
+      <td className="px-6 py-4 font-bold" data-security-critical="true">{contract}</td>
       <td className="px-6 py-4">
         <span className={`px-2 py-1 rounded text-[10px] font-black ${getScoreColor(score)}`}>
           {score}

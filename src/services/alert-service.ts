@@ -2,8 +2,26 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+export interface AlertIncident {
+  id: string;
+  type: string;
+  txHash?: string;
+  responseTimeMs?: number;
+  contractId: string;
+  status: string;
+}
+
+export interface AlertProtocol {
+  name: string;
+  telegramChatId?: string;
+  slackWebhookUrl?: string;
+  pagerdutyKey?: string;
+  teamEmails: string[];
+  tvlUsd: number;
+}
+
 export class AlertService {
-  async sendAlert(incident: any, protocol: any) {
+  async sendAlert(incident: AlertIncident, protocol: AlertProtocol) {
     const alerts = [
       this.sendTelegramAlert(incident, protocol),
       this.sendSlackAlert(incident, protocol),
@@ -14,7 +32,7 @@ export class AlertService {
     await Promise.allSettled(alerts);
   }
 
-  private async sendTelegramAlert(incident: any, protocol: any) {
+  private async sendTelegramAlert(incident: AlertIncident, protocol: AlertProtocol) {
     if (!protocol.telegramChatId) return;
     
     const message = `
@@ -46,7 +64,7 @@ Forensic report generating...
     }
   }
 
-  private async sendSlackAlert(incident: any, protocol: any) {
+  private async sendSlackAlert(incident: AlertIncident, protocol: AlertProtocol) {
     if (!protocol.slackWebhookUrl) return;
     
     const payload = {
@@ -75,7 +93,7 @@ Forensic report generating...
             },
             {
               type: "mrkdwn",
-              text: `*Attacker:*\n<https://etherscan.io/tx/${incident.txHash}|${incident.txHash.slice(0, 10)}...>`
+              text: `*Attacker:*\n<https://etherscan.io/tx/${incident.txHash}|${incident.txHash?.slice(0, 10)}...>`
             },
             {
               type: "mrkdwn",
@@ -116,7 +134,7 @@ Forensic report generating...
     }
   }
 
-  private async sendPagerDutyAlert(incident: any, protocol: any) {
+  private async sendPagerDutyAlert(incident: AlertIncident, protocol: AlertProtocol) {
     if (!protocol.pagerdutyKey) return;
 
     const payload = {
@@ -150,7 +168,7 @@ Forensic report generating...
     }
   }
 
-  private async sendEmailAlert(incident: any, protocol: any) {
+  private async sendEmailAlert(incident: AlertIncident, protocol: AlertProtocol) {
     if (!protocol.teamEmails || protocol.teamEmails.length === 0) return;
 
     try {

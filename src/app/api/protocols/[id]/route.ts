@@ -1,14 +1,29 @@
-import { auth } from "@clerk/nextjs";
+import { validateProtocolOwnership } from "@/lib/auth-utils";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { encrypt } from "@/lib/crypto";
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const { userId } = auth();
-  if (!userId) return new NextResponse("Unauthorized", { status: 401 });
+  const { error } = await validateProtocolOwnership(params.id);
+  if (error) return error;
 
   const body = await req.json();
-  const { emergencyPrivateKey, ...rest } = body;
+  const { emergencyPrivateKey, name, website, twitterHandle, telegramChatId, slackWebhookUrl, pagerdutyKey } = body;
+
+  // Whitelist fields for update
+  const updateData: Record<string, string | number | boolean> = {};
+  if (name) updateData.name = name;
+  if (website) updateData.website = website;
+  if (twitterHandle) updateData.twitterHandle = twitterHandle;
+  if (telegramChatId) updateData.telegramChatId = telegramChatId;
+  if (slackWebhookUrl) {
+    // Basic SSRF protection
+    if (!slackWebhookUrl.startsWith("https://hooks.slack.com/")) {
+      return new NextResponse("Invalid Slack Webhook URL", { status: 400 });
+    }
+    updateData.slackWebhookUrl = slackWebhookUrl;
+  }
+  if (pagerdutyKey) updateData.pagerdutyKey = pagerdutyKey;
 
   if (emergencyPrivateKey) {
     const { encrypted, iv, tag } = encrypt(emergencyPrivateKey);
@@ -22,17 +37,17 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     });
   }
 
-  const protocol = await prisma.protocol.update({
+  const updatedProtocol = await prisma.protocol.update({
     where: { id: params.id },
-    data: rest,
+    data: updateData,
   });
 
-  return NextResponse.json(protocol);
+  return NextResponse.json(updatedProtocol);
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
-  const { userId } = auth();
-  if (!userId) return new NextResponse("Unauthorized", { status: 401 });
+  const { error: deleteError } = await validateProtocolOwnership(params.id);
+  if (deleteError) return deleteError;
 
   // Delete associated data first
   await prisma.contract.deleteMany({ where: { protocolId: params.id } });

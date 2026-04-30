@@ -1,14 +1,14 @@
-import { auth } from "@clerk/nextjs";
+import { validateProtocolOwnership } from "@/lib/auth-utils";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { encrypt } from "@/lib/crypto";
 
 export async function POST(req: Request) {
-  const { userId } = auth();
-  if (!userId) return new NextResponse("Unauthorized", { status: 401 });
-
   const body = await req.json();
   const { protocolId, address, chain, name, abi, privateKey } = body;
+
+  const { error } = await validateProtocolOwnership(protocolId);
+  if (error) return error;
 
   let encryptedKeyData = {};
   if (privateKey) {

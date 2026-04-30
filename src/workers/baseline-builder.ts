@@ -66,7 +66,14 @@ function calculateStats(numbers: number[]) {
   };
 }
 
-async function updateMetric(contractId: string, name: string, stats: any) {
+async function updateMetric(contractId: string, name: string, stats: {
+  mean: number;
+  stdDev: number;
+  p95: number;
+  min: number;
+  max: number;
+  avg: number;
+}) {
   await prisma.baselineMetric.upsert({
     where: { 
       contractId_metricName: { contractId, metricName: name }

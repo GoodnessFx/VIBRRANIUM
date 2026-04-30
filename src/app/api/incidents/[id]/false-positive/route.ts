@@ -1,15 +1,15 @@
-import { auth } from "@clerk/nextjs";
+import { validateIncidentOwnership } from "@/lib/auth-utils";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const { userId } = auth();
-  if (!userId) return new NextResponse("Unauthorized", { status: 401 });
+  const { incident, user, error } = await validateIncidentOwnership(params.id);
+  if (error) return error;
 
   const body = await req.json();
   const { reason } = body;
 
-  const incident = await prisma.incident.update({
+  const updatedIncident = await prisma.incident.update({
     where: { id: params.id },
     data: { 
       status: "resolved", // Assuming resolve on false positive
@@ -42,12 +42,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     data: {
       action: "false_positive_marked",
       actorType: "user",
-      actorId: userId,
+      actorId: user!.id,
       entityType: "incident",
       entityId: params.id,
       details: { thresholdOverride },
     },
   });
 
-  return NextResponse.json({ incident, thresholdOverride });
+  return NextResponse.json({ incident: updatedIncident, thresholdOverride });
 }

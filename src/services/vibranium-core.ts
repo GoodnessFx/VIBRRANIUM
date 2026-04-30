@@ -45,35 +45,74 @@ export class VibraniumCore {
     this.blockchainService.onPendingTransaction(async (tx) => {
       if (!tx.to) return;
       
-      const contract = await prisma.contract.findUnique({
-        where: { 
-          address_chain: { 
-            address: tx.to.toLowerCase(), 
-            chain: "ethereum"
-          }
-        },
-        include: { protocol: true },
-      });
+      try {
+        const contract = await prisma.contract.findUnique({
+          where: { 
+            address_chain: { 
+              address: tx.to.toLowerCase(), 
+              chain: "ethereum"
+            }
+          },
+          include: { protocol: true },
+        });
 
-      if (contract && !contract.paused) {
-        await this.processTransaction(tx, contract);
+        if (contract && !contract.paused) {
+          await this.processTransaction(tx, contract);
+        }
+      } catch (error) {
+        console.error(`Error in monitoring loop for tx ${tx.hash}:`, error);
       }
     });
   }
 
-  private async processTransaction(tx: ethers.TransactionResponse, contract: any) {
-    const startTime = Date.now();
-    const result = await this.exploitDetector.analyzeTransaction(tx, contract);
-    
-    if (result.isExploit) {
-      console.warn(`Exploit detected for contract ${contract.address}: ${result.type}`);
-      await this.respond(contract, tx, result, startTime);
+  private async processTransaction(tx: ethers.TransactionResponse, contract: {
+    id: string;
+    address: string;
+    protocolId: string;
+    paused: boolean;
+    abi: unknown;
+    protocol: {
+      name: string;
+      telegramChatId: string | null;
+      slackWebhookUrl: string | null;
+      pagerdutyKey: string | null;
+      teamEmails: string[];
+      tvlUsd: number;
+    };
+    encryptedEmergencyKey: string | null;
+    emergencyKeyIv: string | null;
+    emergencyKeyTag: string | null;
+  }) {
+    try {
+      const startTime = Date.now();
+      const result = await this.exploitDetector.analyzeTransaction(tx, contract);
+      
+      if (result.isExploit) {
+        console.warn(`Exploit detected for contract ${contract.address}: ${result.type}`);
+        await this.respond(contract, tx, result, startTime);
+      }
+    } catch (error) {
+      console.error(`Error processing transaction ${tx.hash}:`, error);
     }
   }
 
-  private async respond(contract: any, tx: ethers.TransactionResponse, result: ExploitResult, startTimeMs: number) {
-    const startMs = Date.now();
-    
+  private async respond(contract: {
+    id: string;
+    address: string;
+    protocolId: string;
+    abi: unknown;
+    protocol: {
+      name: string;
+      telegramChatId: string | null;
+      slackWebhookUrl: string | null;
+      pagerdutyKey: string | null;
+      teamEmails: string[];
+      tvlUsd: number;
+    };
+    encryptedEmergencyKey: string | null;
+    emergencyKeyIv: string | null;
+    emergencyKeyTag: string | null;
+  }, tx: ethers.TransactionResponse, result: ExploitResult, startTimeMs: number) {
     // Step 1: Create Incident record immediately (status: active)
     const incident = await prisma.incident.create({
       data: {
@@ -136,7 +175,21 @@ export class VibraniumCore {
       });
 
       // Step 4: Multi-channel Alerts (async)
-      await this.alertService.sendAlert({ ...incident, responseTimeMs }, contract.protocol);
+      await this.alertService.sendAlert({ 
+        id: incident.id,
+        type: incident.type,
+        txHash: incident.txHash ?? undefined,
+        responseTimeMs: responseTimeMs ?? undefined,
+        contractId: incident.contractId,
+        status: incident.status
+      }, {
+        name: contract.protocol.name,
+        telegramChatId: contract.protocol.telegramChatId ?? undefined,
+        slackWebhookUrl: contract.protocol.slackWebhookUrl ?? undefined,
+        pagerdutyKey: contract.protocol.pagerdutyKey ?? undefined,
+        teamEmails: contract.protocol.teamEmails,
+        tvlUsd: contract.protocol.tvlUsd
+      });
 
       // Step 5: Queue forensic analysis
       await incidentQueue.add("handle-incident", {
@@ -163,10 +216,19 @@ export class VibraniumCore {
 
       // Escalated alert for failure
       await this.alertService.sendAlert({ 
-        ...incident, 
-        status: "FAILED", 
-        description: "PAUSE TX FAILED — MANUAL INTERVENTION REQUIRED" 
-      }, contract.protocol);
+        id: incident.id,
+        type: incident.type,
+        txHash: incident.txHash ?? undefined,
+        contractId: incident.contractId,
+        status: "FAILED" 
+      }, {
+        name: contract.protocol.name,
+        telegramChatId: contract.protocol.telegramChatId ?? undefined,
+        slackWebhookUrl: contract.protocol.slackWebhookUrl ?? undefined,
+        pagerdutyKey: contract.protocol.pagerdutyKey ?? undefined,
+        teamEmails: contract.protocol.teamEmails,
+        tvlUsd: contract.protocol.tvlUsd
+      });
     }
   }
 }

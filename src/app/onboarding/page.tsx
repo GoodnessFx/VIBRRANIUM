@@ -1,12 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ethers } from "ethers";
 
+interface Protocol {
+  id: string;
+  name: string;
+}
+
 export default function OnboardingPage() {
   const [step, setStep] = useState(1);
-  const [protocol, setProtocol] = useState<any>(null);
+  const [protocol, setProtocol] = useState<Protocol | null>(null);
   const router = useRouter();
 
   const nextStep = () => setStep(s => s + 1);
@@ -24,16 +29,16 @@ export default function OnboardingPage() {
           <div className="text-sm font-medium text-zinc-500">Step {step} of 4</div>
         </header>
 
-        {step === 1 && <Step1 onComplete={(p: any) => { setProtocol(p); nextStep(); }} />}
-        {step === 2 && <Step2 protocolId={protocol?.id} onComplete={nextStep} />}
-        {step === 3 && <Step3 protocolId={protocol?.id} onComplete={nextStep} />}
-        {step === 4 && <Step4 protocolId={protocol?.id} onComplete={() => router.push("/dashboard")} />}
+        {step === 1 && <Step1 onComplete={(p: Protocol) => { setProtocol(p); nextStep(); }} />}
+        {step === 2 && <Step2 protocolId={protocol?.id ?? ""} onComplete={nextStep} />}
+        {step === 3 && <Step3 protocolId={protocol?.id ?? ""} onComplete={nextStep} />}
+        {step === 4 && <Step4 onComplete={() => router.push("/dashboard")} />}
       </div>
     </div>
   );
 }
 
-function Step1({ onComplete }: { onComplete: (p: any) => void }) {
+function Step1({ onComplete }: { onComplete: (p: Protocol) => void }) {
   const [loading, setLoading] = useState(false);
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -55,7 +60,7 @@ function Step1({ onComplete }: { onComplete: (p: any) => void }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-8 animate-slide-up">
       <div className="space-y-2">
-        <h2 className="text-3xl font-black">Let's get started.</h2>
+        <h2 className="text-3xl font-black">Let&apos;s get started.</h2>
         <p className="text-zinc-500 text-lg">Tell us about the protocol you want to protect.</p>
       </div>
       <div className="space-y-4">
@@ -165,7 +170,7 @@ function Step3({ protocolId, onComplete }: { protocolId: string, onComplete: () 
             <div className="space-y-1">
               <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Pauser Address (Public)</label>
               <code className="block break-all text-sm bg-black p-3 rounded border border-zinc-800">{keypair.address}</code>
-              <p className="text-[10px] text-zinc-500">Add this address as a 'PAUSER' in your Guardian proxy contract.</p>
+              <p className="text-[10px] text-zinc-500">Add this address as a &apos;PAUSER&apos; in your Guardian proxy contract.</p>
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-black uppercase tracking-widest text-red-500">Private Key (Save this!)</label>
@@ -182,7 +187,7 @@ function Step3({ protocolId, onComplete }: { protocolId: string, onComplete: () 
   );
 }
 
-function Step4({ onComplete }: { protocolId: string, onComplete: () => void }) {
+function Step4({ onComplete }: { onComplete: () => void }) {
   return (
     <div className="space-y-8 animate-slide-up">
       <div className="space-y-2">
