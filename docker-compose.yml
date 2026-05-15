@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  bot-1:
+    build: .
+    environment:
+      - INSTANCE_ID=bot-1
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis:6379
+      - ALCHEMY_ETHEREUM_WS_URL=${ALCHEMY_ETHEREUM_WS_URL}
+      - QUICKNODE_RPC_URL=${QUICKNODE_RPC_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      - redis
+      - db
+
+  bot-2:
+    build: .
+    environment:
+      - INSTANCE_ID=bot-2
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis:6379
+      - ALCHEMY_ETHEREUM_WS_URL=${ALCHEMY_ETHEREUM_WS_URL}
+      - QUICKNODE_RPC_URL=${QUICKNODE_RPC_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      - redis
+      - db
+
+  bot-3:
+    build: .
+    environment:
+      - INSTANCE_ID=bot-3
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis:6379
+      - ALCHEMY_ETHEREUM_WS_URL=${ALCHEMY_ETHEREUM_WS_URL}
+      - QUICKNODE_RPC_URL=${QUICKNODE_RPC_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      - redis
+      - db
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=vibranium
+    ports:
+      - "5432:5432"
+
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"

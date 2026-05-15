@@ -5,14 +5,18 @@ import { decrypt } from "@/lib/crypto";
 import { ethers } from "ethers";
 import { incidentQueue } from "@/lib/queue";
 import { AlertService } from "./alert-service";
+import { BotCoordinator } from "./bot-coordinator";
 
 export class VibraniumCore {
   private blockchainService: BlockchainService;
   private exploitDetector: ExploitDetector;
   private alertService: AlertService;
+  private coordinator: BotCoordinator;
+  private instanceId: string;
 
-  constructor() {
+  constructor(instanceId: string = "bot-1") {
     this.validateEnv();
+    this.instanceId = instanceId;
     this.blockchainService = new BlockchainService(
       process.env.ALCHEMY_ETHEREUM_WS_URL || "",
       process.env.QUICKNODE_RPC_URL || "",
@@ -20,6 +24,7 @@ export class VibraniumCore {
     );
     this.exploitDetector = new ExploitDetector();
     this.alertService = new AlertService();
+    this.coordinator = new BotCoordinator(this.instanceId);
   }
 
   private validateEnv() {
@@ -41,7 +46,11 @@ export class VibraniumCore {
   }
 
   async startMonitoring() {
-    console.log("Starting VIBRANIUM Core monitoring...");
+    console.log(`Starting VIBRANIUM Core monitoring (Instance: ${this.instanceId})...`);
+    
+    // Start heartbeat
+    setInterval(() => this.coordinator.sendHeartbeat(), 30000);
+
     this.blockchainService.onPendingTransaction(async (tx) => {
       if (!tx.to) return;
       
@@ -87,9 +96,25 @@ export class VibraniumCore {
       const startTime = Date.now();
       const result = await this.exploitDetector.analyzeTransaction(tx, contract);
       
-      if (result.isExploit) {
-        console.warn(`Exploit detected for contract ${contract.address}: ${result.type}`);
+      // Submit to coordinator for consensus
+      const { shouldPause, score, results } = await this.coordinator.submitDetection(tx.hash, result);
+      
+      if (shouldPause) {
+        console.warn(`Consensus reached! Exploit detected for contract ${contract.address}. Score: ${score}`);
         await this.respond(contract, tx, result, startTime);
+      } else if (result.score > 75) {
+        console.info(`Suspicious transaction detected (${result.score}), awaiting consensus...`);
+        // Log suspicious activity
+        await prisma.auditLog.create({
+          data: {
+            action: "suspicious_tx",
+            actorType: "system",
+            actorId: this.instanceId,
+            entityType: "transaction",
+            entityId: tx.hash,
+            details: { score: result.score, breakdown: result.scoreBreakdown },
+          },
+        });
       }
     } catch (error) {
       console.error(`Error processing transaction ${tx.hash}:`, error);
@@ -118,11 +143,12 @@ export class VibraniumCore {
       data: {
         protocolId: contract.protocolId,
         contractId: contract.id,
-        type: "exploit",
+        type: result.type || "exploit",
         severity: "critical",
         status: "active",
         description: result.reason || `Exploit of type ${result.type} detected and contract paused.`,
         txHash: tx.hash,
+        score: result.score,
       },
     });
 
@@ -167,10 +193,10 @@ export class VibraniumCore {
         data: {
           action: "contract_paused",
           actorType: "system",
-          actorId: "VIBRANIUM_CORE",
+          actorId: this.instanceId,
           entityType: "incident",
           entityId: incident.id,
-          details: { responseTimeMs, txHash: pauseTx.hash },
+          details: { responseTimeMs, txHash: pauseTx.hash, score: result.score },
         },
       });
 
@@ -207,7 +233,7 @@ export class VibraniumCore {
         data: {
           action: "pause_failed",
           actorType: "system",
-          actorId: "VIBRANIUM_CORE",
+          actorId: this.instanceId,
           entityType: "contract",
           entityId: contract.id,
           details: { error: String(error) },

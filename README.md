@@ -1,60 +1,51 @@
-# 🛡️ VIBRANIUM — Autonomous Smart Contract Guardian
+# 🛡️ VIBRANIUM — The Unbreakable Smart Contract Guardian
 
 VIBRANIUM is a production-ready, fully autonomous security system for DeFi protocols. It monitors live transactions, detects exploit patterns in real-time, and automatically pauses vulnerable contracts before funds are drained.
-VIBRANIUM DOES NOT BREAK. VIBRANIUM DOES NOT YIELD.
+
+**VIBRANIUM DOES NOT BREAK. VIBRANIUM DOES NOT YIELD.**
+
 ## 🚀 Key Features
 
 - **Autonomous Response**: Under 10 seconds from exploit detection to contract paused.
-- **Advanced Exploit Detection**: Combines heuristic rules, statistical baseline deviations, and AI-powered analysis (GPT-4o).
-- **Multi-Chain Support**: Ethereum, Base, Arbitrum, Polygon, and BSC.
-- **Smart Response**: Automatic gas retries (up to 3x) for pause transactions.
-- **AI-Powered Forensics**: Automatic generation of technical forensic reports and suggested code fixes.
-- **Enterprise-Grade Security**: AES-256-GCM encryption for emergency keys, audit logging for all critical actions.
+- **Three-Instance Consensus**: 3 independent bot instances must reach 2/3 agreement before any critical action.
+- **7-Method Detection Scorer**:
+    - **Reentrancy**: Detects repeated function calls and nested execution patterns.
+    - **Flash Loan**: Identifies complex transactions using flash loan providers.
+    - **Sandwich Attack**: Monitors mempool for toxic arbitrage patterns.
+    - **Oracle Manipulation**: Real-time comparison against a 5-source consensus oracle.
+    - **Anomalous Behavior**: Statistical baseline deviations (gas, value, frequency).
+    - **Pattern Match**: Signature matching against 500+ historical DeFi exploit patterns.
+    - **Cross-Protocol Correlation**: Detects multi-protocol contagion attacks.
+- **Enterprise-Grade Governance**: 3/5 Multi-Sig Admin with 24-hour timelock and role separation.
+- **Self-Healing Infrastructure**: Automatic failover, heartbeat monitoring, and crash-resistant architecture.
 
 ## 🛠️ Tech Stack
 
 - **Frontend**: Next.js 14 (App Router), Tailwind CSS
-- **Auth**: Clerk (Production-ready)
-- **Database**: PostgreSQL + Prisma ORM
-- **Queue**: Redis + BullMQ
-- **Blockchain**: Ethers.js v6
+- **Smart Contracts**: Solidity 0.8.20+, OpenZeppelin, Hardhat, Foundry
+- **Monitoring**: 3x Node.js Bot Instances + Redis (Consensus Engine)
+- **Database**: PostgreSQL (Prisma) + MongoDB (State Recovery)
 - **AI**: OpenAI GPT-4o
-- **Alerts**: Telegram, Slack, PagerDuty, Resend (Email)
-- **PDF**: Puppeteer
+- **Blockchain**: Ethers.js v6, Alchemy, QuickNode
 
-## 🛡️ How It Works (Monitor → Detect → Pause)
+## 🛡️ Smart Contract Architecture
 
-VIBRANIUM follows a three-step process to protect your protocol:
-
-### 1. **Monitor**
-- **WebSocket Subscriptions**: Monitors the mempool via Alchemy/QuickNode on 5 chains.
-- **Failover Logic**: Automatically switches to QuickNode if Alchemy rate limits or disconnects.
-- **Reconnect with Backoff**: WebSocket reconnects with exponential backoff (starting at 1s, max 30s).
-
-### 2. **Detect**
-- **6-Pattern Scorer**:
-    - **Reentrancy**: Detects repeated function calls in a single transaction.
-    - **Flash Loan**: Identifies complex transactions using flash loan providers.
-    - **Oracle Manipulation**: Monitors for multiple price-related calls in a single transaction.
-    - **Access Control**: Detects unauthorized ownership transfers or proxy upgrades.
-    - **Logic Exploits**: Statistical baseline deviations (gas, value, frequency).
-    - **Value Extraction**: Flags large `withdrawAll` or abnormal value transfers.
-- **AI-Powered (GPT-4o)**: Suspicious transactions are analyzed by AI for hidden exploit patterns.
-- **Baseline Building**: Builds a statistical profile for every contract over 48 hours for precise detection.
-
-### 3. **Pause**
-- **Autonomous Response**: If an exploit is detected, VIBRANIUM decrypts the emergency key and sends a `pause` transaction.
-- **3x Gas Retry**: If the initial pause fails, VIBRANIUM retries up to 3x with increasing gas (1x → 2x → 3x).
-- **Audit Logging**: Every action (detect, pause, fail, alert) is logged to a tamper-proof `AuditLog` table.
-- **False Positive Calibration**: Teams can mark incidents as false positives, automatically adjusting scoring thresholds.
+- **VibraniumGuard.sol**: Core protection logic with transient storage locks and CEI enforcement.
+- **MultiSigAdmin.sol**: 3/5 governance with timelock and role-based access control.
+- **ConsensusOracle.sol**: 5-source price aggregator with median calculation and outlier detection.
+- **EnhancedBlacklist.sol**: Global attacker registry with confidence scoring.
+- **InsuranceFund.sol**: Secure payout system for covered protocols.
+- **HoneypotVault.sol**: Attacker detection trap to identify and log adversarial actors.
+- **StateRecovery.sol**: Daily snapshots and 72-hour dispute window for state rollbacks.
 
 ## 📁 Project Structure
 
-- `src/app`: Next.js pages and API routes.
-- `src/services`: Core logic (VibraniumCore, ExploitDetector, Forensics).
-- `src/workers`: Background workers for baseline building and incident handling.
-- `src/lib`: Shared utilities (Prisma, Stripe, Queue, Crypto).
-- `prisma/schema.prisma`: Database model with auditability and scoring support.
+- `contracts/`: Core smart contracts (Guard, Multi-Sig, Oracle, etc.)
+- `src/vibranium-monitor/`: 3-instance bot architecture and consensus engine.
+- `src/services/`: Exploit detection, forensics, and coordination services.
+- `tests/`: 150+ test cases covering all attack vectors and consensus scenarios.
+- `DEPLOYMENT_GUIDE.md`: Step-by-step mainnet deployment checklist.
+- `OPERATION_MANUAL.md`: Daily ops and incident response playbook.
 
 ## 🚦 Getting Started
 
@@ -63,23 +54,23 @@ VIBRANIUM follows a three-step process to protect your protocol:
     npm install
     ```
 2.  **Environment Setup**:
-    Copy `.env.example` to `.env` and fill in the required API keys (Alchemy, OpenAI, Clerk, Stripe, etc.).
-3.  **Database Migration**:
+    Copy `.env.example` to `.env` and fill in the required API keys.
+3.  **Compile Contracts**:
     ```bash
-    npx prisma migrate dev
+    npx hardhat compile
     ```
-4.  **Run Development Server**:
+4.  **Run Tests**:
     ```bash
-    npm run dev
+    npx hardhat test
     ```
-5.  **Start VIBRANIUM Worker**:
+5.  **Launch Monitoring Cluster**:
     ```bash
-    npx ts-node src/worker.ts
+    docker-compose up -d
     ```
 
 ## 🛡️ Security Promise
 
-VIBRANIUM only requires permissions to `pause` your contracts. It never has access to your funds. The emergency keypair is generated client-side and encrypted before ever reaching our servers.
+VIBRANIUM is built for a $1B+ TVL threat model. It assumes nation-state adversaries with $100M budgets. Every line of code is designed to be unbreakable.
 
 ---
 Built for the next generation of DeFi security. **VIBRANIUM acts.**
